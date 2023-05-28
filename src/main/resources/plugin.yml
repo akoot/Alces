@@ -1,0 +1,6 @@
+name: Alces
+version: '${version}'
+main: me.akoot.plugins.Alces
+api-version: 1.19
+authors: [ Akoot_ ]
+website: https://akoot.me/plugins/alces
