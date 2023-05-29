@@ -25,13 +25,16 @@ class Alces : JavaPlugin(), Listener {
     @EventHandler
     fun onBlockPlace(event: BlockPlaceEvent) {
         val block = event.block
-        if (!isHead(block)) return // but what if all blocks?
+        if (!isHead(block)) return
+
         val itemMeta = event.itemInHand.itemMeta
         val displayName = itemMeta.displayName()?.let { serializer.serialize(it) }
-        val lore = itemMeta.lore()?.let { it.mapNotNull { line -> serializer.serialize(line) } }?.joinToString("\n")
+        val lore = itemMeta.lore()?.mapNotNull { serializer.serialize(it) }?.joinToString("\n")
+
         if (displayName == null && lore == null) return
-        println("writing file")
-        Files.writeString(getJsonFile(block.location).toPath(), "${displayName ?: "-"}\n${lore ?: "-"}")
+
+        val filePath = getJsonFile(block.location).toPath()
+        Files.writeString(filePath, "${displayName ?: "-"}\n${lore ?: "-"}")
     }
 
     @EventHandler
