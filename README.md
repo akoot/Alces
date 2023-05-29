@@ -5,3 +5,5 @@ Mob heads will no longer lose their display name and lore when placed.
 3. Break it
 4. Lore remains
 5. BOOM
+
+[Hangar](https://hangar.papermc.io/Akoot/Alces)
