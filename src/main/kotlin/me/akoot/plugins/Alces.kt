@@ -2,24 +2,22 @@ package me.akoot.plugins
 
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import org.bukkit.Location
+import org.bukkit.NamespacedKey
 import org.bukkit.block.Block
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockPlaceEvent
+import org.bukkit.persistence.PersistentDataType
 import org.bukkit.plugin.java.JavaPlugin
-import java.io.File
-import java.nio.file.Files
 
 class Alces : JavaPlugin(), Listener {
 
     private lateinit var serializer: GsonComponentSerializer
-    private val storageFile = File(dataFolder, "placed")
 
     override fun onEnable() {
         server.pluginManager.registerEvents(this, this)
         serializer = GsonComponentSerializer.gson()
-        storageFile.mkdirs()
     }
 
     @EventHandler
@@ -27,14 +25,16 @@ class Alces : JavaPlugin(), Listener {
         val block = event.block
         if (!isHead(block)) return
 
+        val key = getKey(block.location)
+        val pdc = block.chunk.persistentDataContainer
+
         val itemMeta = event.itemInHand.itemMeta
         val displayName = itemMeta.displayName()?.let { serializer.serialize(it) }
         val lore = itemMeta.lore()?.mapNotNull { serializer.serialize(it) }?.joinToString("\n")
 
         if (displayName == null && lore == null) return
 
-        val filePath = getJsonFile(block.location).toPath()
-        Files.writeString(filePath, "${displayName ?: "-"}\n${lore ?: "-"}")
+        pdc.set(key, PersistentDataType.STRING, "${displayName ?: "-"}\n${lore ?: "-"}")
     }
 
     @EventHandler
@@ -42,12 +42,13 @@ class Alces : JavaPlugin(), Listener {
         val block = event.block
         if (!isHead(block)) return
 
-        val blockFile = getJsonFile(block.location)
-        if (!blockFile.exists()) return
+        val key = getKey(block.location)
+        val pdc = block.chunk.persistentDataContainer
+        val data = pdc.get(key, PersistentDataType.STRING) ?: return
 
         event.isDropItems = false
 
-        val lines = blockFile.readLines()
+        val lines = data.split("\n")
         val displayName = lines[0]
         val lore = lines.drop(1)
 
@@ -63,14 +64,15 @@ class Alces : JavaPlugin(), Listener {
         drop.itemMeta = itemMeta
 
         block.location.world.dropItemNaturally(block.location, drop)
-        blockFile.delete()
-    }
-
-    private fun getJsonFile(location: Location): File {
-        return File(storageFile, "${location.world.name},${location.blockX},${location.blockY},${location.blockZ}.json")
+        pdc.remove(key)
     }
 
     private fun isHead(block: Block): Boolean {
         return block.type.name.endsWith("_HEAD")
+    }
+
+    private fun getKey(location: Location): NamespacedKey {
+        val key = "${location.world.name}.${location.blockX}.${location.blockY}.${location.blockZ}"
+        return NamespacedKey("alces", key)
     }
 }
