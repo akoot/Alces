@@ -27,7 +27,6 @@ class Alces : JavaPlugin(), Listener {
     @EventHandler
     fun onBlockPlace(event: BlockPlaceEvent) {
         val block = event.block
-        if (!isHead(block)) return
 
         val pdc = getPDC(block)
         val key = getKey(block.location)
@@ -44,13 +43,12 @@ class Alces : JavaPlugin(), Listener {
     @EventHandler
     fun onBlockBreak(event: BlockBreakEvent) {
         val block = event.block
-        if (!isHead(block)) return
         val pdc = getPDC(block)
         val key = getKey(block.location)
 
         if (!pdc.has(key, PersistentDataType.STRING)) return
 
-        restoreHead(block, pdc)
+        restoreBlock(block, pdc)
         block.type = Material.AIR
     }
 
@@ -59,13 +57,12 @@ class Alces : JavaPlugin(), Listener {
     fun onBlockBreakBlock(event: BlockBreakBlockEvent) {
         val block = event.block
 
-        if (!isHead(block)) return
         val pdc = getPDC(block)
         val key = getKey(block.location)
 
         if (!pdc.has(key, PersistentDataType.STRING)) return
 
-        restoreHead(block, pdc)
+        restoreBlock(block, pdc)
         block.type = Material.AIR
         event.drops.clear()
 
@@ -76,19 +73,18 @@ class Alces : JavaPlugin(), Listener {
         val explodedBlocks = event.blockList()
 
         for (block in explodedBlocks) {
-            if (isHead(block)) {
-                val pdc = getPDC(block)
-                val key = getKey(block.location)
+            val pdc = getPDC(block)
+            val key = getKey(block.location)
 
-                if (!pdc.has(key, PersistentDataType.STRING)) return
+            if (!pdc.has(key, PersistentDataType.STRING)) continue
 
-                restoreHead(block, pdc)
-                block.type = Material.AIR
-            }
+            restoreBlock(block, pdc)
+            block.type = Material.AIR
+
         }
     }
 
-    private fun restoreHead(block: Block, pdc: PersistentDataContainer) {
+    private fun restoreBlock(block: Block, pdc: PersistentDataContainer) {
 
         val key = getKey(block.location)
         val data = pdc.get(key, PersistentDataType.STRING) ?: return
@@ -114,10 +110,6 @@ class Alces : JavaPlugin(), Listener {
 
     private fun getPDC(block: Block): PersistentDataContainer {
         return block.chunk.persistentDataContainer
-    }
-
-    private fun isHead(block: Block): Boolean {
-        return block.type.name.endsWith("_HEAD")
     }
 
     private fun getKey(location: Location): NamespacedKey {
