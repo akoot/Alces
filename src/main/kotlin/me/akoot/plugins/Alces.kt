@@ -1,13 +1,17 @@
 package me.akoot.plugins
 
+import io.papermc.paper.event.block.BlockBreakBlockEvent
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import org.bukkit.Location
+import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.block.Block
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockPlaceEvent
+import org.bukkit.event.entity.EntityExplodeEvent
+import org.bukkit.persistence.PersistentDataContainer
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.plugin.java.JavaPlugin
 
@@ -25,8 +29,8 @@ class Alces : JavaPlugin(), Listener {
         val block = event.block
         if (!isHead(block)) return
 
+        val pdc = getPDC(block)
         val key = getKey(block.location)
-        val pdc = block.chunk.persistentDataContainer
 
         val itemMeta = event.itemInHand.itemMeta
         val displayName = itemMeta.displayName()?.let { serializer.serialize(it) }
@@ -41,12 +45,53 @@ class Alces : JavaPlugin(), Listener {
     fun onBlockBreak(event: BlockBreakEvent) {
         val block = event.block
         if (!isHead(block)) return
+        val pdc = getPDC(block)
+        val key = getKey(block.location)
+
+        if (!pdc.has(key, PersistentDataType.STRING)) return
+
+        restoreHead(block, pdc)
+        block.type = Material.AIR
+    }
+
+
+    @EventHandler
+    fun onBlockBreakBlock(event: BlockBreakBlockEvent) {
+        val block = event.block
+
+        if (!isHead(block)) return
+        val pdc = getPDC(block)
+        val key = getKey(block.location)
+
+        if (!pdc.has(key, PersistentDataType.STRING)) return
+
+        restoreHead(block, pdc)
+        block.type = Material.AIR
+        event.drops.clear()
+
+    }
+
+    @EventHandler
+    fun onExplosion(event: EntityExplodeEvent) {
+        val explodedBlocks = event.blockList()
+
+        for (block in explodedBlocks) {
+            if (isHead(block)) {
+                val pdc = getPDC(block)
+                val key = getKey(block.location)
+
+                if (!pdc.has(key, PersistentDataType.STRING)) return
+
+                restoreHead(block, pdc)
+                block.type = Material.AIR
+            }
+        }
+    }
+
+    private fun restoreHead(block: Block, pdc: PersistentDataContainer) {
 
         val key = getKey(block.location)
-        val pdc = block.chunk.persistentDataContainer
         val data = pdc.get(key, PersistentDataType.STRING) ?: return
-
-        event.isDropItems = false
 
         val lines = data.split("\n")
         val displayName = lines[0]
@@ -65,6 +110,10 @@ class Alces : JavaPlugin(), Listener {
 
         block.location.world.dropItemNaturally(block.location, drop)
         pdc.remove(key)
+    }
+
+    private fun getPDC(block: Block): PersistentDataContainer {
+        return block.chunk.persistentDataContainer
     }
 
     private fun isHead(block: Block): Boolean {
