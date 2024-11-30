@@ -6,6 +6,7 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.block.Block
+import org.bukkit.block.data.Ageable
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
@@ -27,6 +28,9 @@ class Alces : JavaPlugin(), Listener {
     @EventHandler
     fun onBlockPlace(event: BlockPlaceEvent) {
         val block = event.block
+
+        val blockData = block.blockData
+        if (blockData is Ageable) return
 
         val pdc = getPDC(block)
         val key = getKey(block.location)
