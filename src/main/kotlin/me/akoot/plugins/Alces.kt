@@ -1,5 +1,6 @@
 package me.akoot.plugins
 
+import com.destroystokyo.paper.event.block.BlockDestroyEvent
 import io.papermc.paper.event.block.BlockBreakBlockEvent
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import org.bukkit.Location
@@ -47,13 +48,13 @@ class Alces : JavaPlugin(), Listener {
     @EventHandler
     fun onBlockBreak(event: BlockBreakEvent) {
         val block = event.block
+
         val pdc = getPDC(block)
         val key = getKey(block.location)
 
         if (!pdc.has(key, PersistentDataType.STRING)) return
 
         restoreBlock(block, pdc)
-        block.type = Material.AIR
     }
 
 
@@ -67,9 +68,19 @@ class Alces : JavaPlugin(), Listener {
         if (!pdc.has(key, PersistentDataType.STRING)) return
 
         restoreBlock(block, pdc)
-        block.type = Material.AIR
         event.drops.clear()
+    }
 
+    @EventHandler
+    fun onBlockDestroy(event: BlockDestroyEvent) {
+        val block = event.block
+
+        val pdc = getPDC(block)
+        val key = getKey(block.location)
+
+        if (!pdc.has(key, PersistentDataType.STRING)) return
+
+        restoreBlock(block, pdc)
     }
 
     @EventHandler
@@ -83,19 +94,20 @@ class Alces : JavaPlugin(), Listener {
             if (!pdc.has(key, PersistentDataType.STRING)) continue
 
             restoreBlock(block, pdc)
-            block.type = Material.AIR
-
         }
     }
 
     private fun restoreBlock(block: Block, pdc: PersistentDataContainer) {
 
+        if (block.drops.isEmpty()) return
         val key = getKey(block.location)
         val data = pdc.get(key, PersistentDataType.STRING) ?: return
 
         val lines = data.split("\n")
         val displayName = lines[0]
         val lore = lines.drop(1)
+
+
 
         val drop = block.drops.first()
         val itemMeta = drop.itemMeta
@@ -109,6 +121,7 @@ class Alces : JavaPlugin(), Listener {
         drop.itemMeta = itemMeta
 
         block.location.world.dropItemNaturally(block.location, drop)
+        block.type = Material.AIR
         pdc.remove(key)
     }
 
