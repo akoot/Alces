@@ -81,6 +81,7 @@ class Alces : JavaPlugin(), Listener {
         if (!pdc.has(key, PersistentDataType.STRING)) return
 
         restoreBlock(block, pdc)
+        event.setWillDrop(false)
     }
 
     @EventHandler
