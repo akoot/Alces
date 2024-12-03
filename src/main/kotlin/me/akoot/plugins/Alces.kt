@@ -7,10 +7,13 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.block.Block
+import org.bukkit.block.BlockFace
 import org.bukkit.block.data.Ageable
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
+import org.bukkit.event.block.BlockPistonExtendEvent
+import org.bukkit.event.block.BlockPistonRetractEvent
 import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.entity.EntityExplodeEvent
 import org.bukkit.persistence.PersistentDataContainer
@@ -49,25 +52,14 @@ class Alces : JavaPlugin(), Listener {
     fun onBlockBreak(event: BlockBreakEvent) {
         val block = event.block
 
-        val pdc = getPDC(block)
-        val key = getKey(block.location)
-
-        if (!pdc.has(key, PersistentDataType.STRING)) return
-
-        restoreBlock(block, pdc)
+        handleBlockEvent(block)
     }
-
 
     @EventHandler
     fun onBlockBreakBlock(event: BlockBreakBlockEvent) {
         val block = event.block
 
-        val pdc = getPDC(block)
-        val key = getKey(block.location)
-
-        if (!pdc.has(key, PersistentDataType.STRING)) return
-
-        restoreBlock(block, pdc)
+        handleBlockEvent(block)
         event.drops.clear()
     }
 
@@ -75,12 +67,7 @@ class Alces : JavaPlugin(), Listener {
     fun onBlockDestroy(event: BlockDestroyEvent) {
         val block = event.block
 
-        val pdc = getPDC(block)
-        val key = getKey(block.location)
-
-        if (!pdc.has(key, PersistentDataType.STRING)) return
-
-        restoreBlock(block, pdc)
+        handleBlockEvent(block)
         event.setWillDrop(false)
     }
 
@@ -89,41 +76,61 @@ class Alces : JavaPlugin(), Listener {
         val explodedBlocks = event.blockList()
 
         for (block in explodedBlocks) {
-            val pdc = getPDC(block)
-            val key = getKey(block.location)
-
-            if (!pdc.has(key, PersistentDataType.STRING)) continue
-
-            restoreBlock(block, pdc)
+            handleBlockEvent(block)
         }
     }
 
-    private fun restoreBlock(block: Block, pdc: PersistentDataContainer) {
+    @EventHandler
+    fun pistonRetract(event: BlockPistonRetractEvent) {
+        val blocks = event.blocks
 
-        if (block.drops.isEmpty()) return
+        for (block in blocks) {
+            handleBlockEvent(block, event.direction)
+        }
+    }
+
+    @EventHandler
+    fun pistonExtend(event: BlockPistonExtendEvent) {
+        val blocks = event.blocks
+
+        for (block in blocks) {
+            handleBlockEvent(block, event.direction)
+        }
+    }
+
+    private fun handleBlockEvent(block: Block, direction: BlockFace? = null) {
+        val pdc = getPDC(block)
         val key = getKey(block.location)
+
         val data = pdc.get(key, PersistentDataType.STRING) ?: return
 
-        val lines = data.split("\n")
-        val displayName = lines[0]
-        val lore = lines.drop(1)
+        if (direction != null) {
+            val newLocation =
+                block.location.add(direction.modX.toDouble(), direction.modY.toDouble(), direction.modZ.toDouble())
+            val newBlock = newLocation.block
+            val newBlockPdc = getPDC(newBlock)
 
+            pdc.remove(key)
+            newBlockPdc.set(getKey(newBlock.location), PersistentDataType.STRING, data)
+        } else {
+            if (block.drops.isEmpty()) return
+            val lines = data.split("\n")
+            val displayName = lines[0]
+            val lore = lines.drop(1)
 
+            val drop = block.drops.first()
+            val itemMeta = drop.itemMeta
 
-        val drop = block.drops.first()
-        val itemMeta = drop.itemMeta
+            if (displayName != "-") itemMeta.displayName(serializer.deserialize(displayName))
+            if (lore.isNotEmpty() && lore[0] != "-") itemMeta.lore(lore.map { serializer.deserialize(it) })
 
-        if (displayName != "-")
-            itemMeta.displayName(serializer.deserialize(displayName))
+            drop.itemMeta = itemMeta
+            block.location.world.dropItemNaturally(block.location, drop)
 
-        if (lines[1] != "-")
-            itemMeta.lore(lore.map { serializer.deserialize(it) })
+            block.type = Material.AIR
+            pdc.remove(key)
+        }
 
-        drop.itemMeta = itemMeta
-
-        block.location.world.dropItemNaturally(block.location, drop)
-        block.type = Material.AIR
-        pdc.remove(key)
     }
 
     private fun getPDC(block: Block): PersistentDataContainer {
