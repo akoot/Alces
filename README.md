@@ -1,5 +1,5 @@
 # Alces 
-Mob heads will no longer lose their display name and lore when placed.
+Blocks will no longer lose their display name and lore when placed.
 
 
 
