@@ -1,4 +1,4 @@
-package me.akoot.plugins
+package co.akoot.plugins
 
 import com.destroystokyo.paper.event.block.BlockDestroyEvent
 import io.papermc.paper.event.block.BlockBreakBlockEvent

@@ -1,7 +1,7 @@
 name: Alces
 version: '${version}'
-main: me.akoot.plugins.Alces
+main: co.akoot.plugins.Alces
 api-version: 1.19
-authors: [ Akoot_ ]
+authors: [ Akoot_, IndiaPaleAle ]
 website: https://akoot.me/plugins/alces
-description: Mob heads will no longer lose their display name and lore when placed.
+description: Blocks will no longer lose their display name and lore when placed.
