@@ -82,18 +82,14 @@ class Alces : JavaPlugin(), Listener {
 
     @EventHandler
     fun pistonRetract(event: BlockPistonRetractEvent) {
-        val blocks = event.blocks
-
-        for (block in blocks) {
+        event.blocks.forEach { block ->
             handleBlockEvent(block, event.direction)
         }
     }
 
     @EventHandler
     fun pistonExtend(event: BlockPistonExtendEvent) {
-        val blocks = event.blocks
-
-        for (block in blocks) {
+        event.blocks.forEach { block ->
             handleBlockEvent(block, event.direction)
         }
     }
@@ -111,7 +107,8 @@ class Alces : JavaPlugin(), Listener {
             val newBlockPdc = getPDC(newBlock)
 
             pdc.remove(key)
-            newBlockPdc.set(getKey(newBlock.location), PersistentDataType.STRING, data)
+            runNextTick { newBlockPdc.set(getKey(newBlock.location), PersistentDataType.STRING, data) }
+
         } else {
             if (block.drops.isEmpty()) return
             val lines = data.split("\n")
@@ -140,5 +137,9 @@ class Alces : JavaPlugin(), Listener {
     private fun getKey(location: Location): NamespacedKey {
         val key = "${location.world.name}.${location.blockX}.${location.blockY}.${location.blockZ}"
         return NamespacedKey("alces", key)
+    }
+
+    private fun runNextTick(task: Runnable) {
+        server.scheduler.runTaskLater(this, task, 1)
     }
 }
